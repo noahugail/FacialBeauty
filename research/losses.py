@@ -8,6 +8,8 @@ Softmax losses
 """
 def SquaredEarthMoversDistance():
     def squared_earth_movers_distance(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.cast(y_pred, tf.float32)
         cdf_true = K.cumsum(y_true, axis=-1)
         cdf_pred = K.cumsum(y_pred, axis=-1)
         return K.mean(K.sqrt(K.mean(K.square(cdf_true - cdf_pred), axis=-1)))
@@ -26,6 +28,8 @@ def MeanAbsoluteError(n=5):
         return tf.math.reduce_mean(multiply(y), axis=1)
 
     def mean_absolute_error(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.cast(y_pred, tf.float32)
         y_true_mean = mean(y_true)
         y_pred_mean = mean(y_pred)
         return tf.reduce_mean(tf.abs(y_true_mean - y_pred_mean))
@@ -40,6 +44,8 @@ def RootMeanSquaredError(n=5):
         return tf.math.reduce_mean(multiply(y), axis=1)
     
     def root_mean_squared_error(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.cast(y_pred, tf.float32)
         y_true_mean = mean(y_true)
         y_pred_mean = mean(y_pred)
         return tf.sqrt(tf.reduce_mean(tf.square(y_true_mean - y_pred_mean)))
@@ -54,6 +60,8 @@ def PearsonCorrelation(n=5):
         return tf.reshape(tf.math.reduce_mean(multiply(y), axis=1), [-1, 1])
     
     def correlation(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.cast(y_pred, tf.float32)
         y_true_mean = mean(y_true)
         y_pred_mean = mean(y_pred)
         return tfp.stats.correlation(y_true_mean, y_pred_mean)[0][0]
@@ -72,6 +80,8 @@ def MeanAbsoluteErrorSD(n=5):
         return tf.math.reduce_std(multiply(y), axis=1)
     
     def mean_absolute_error(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.cast(y_pred, tf.float32)
         y_true_std = std(y_true)
         y_pred_std = std(y_pred)
         return tf.reduce_mean(tf.abs(y_true_std - y_pred_std))
@@ -86,6 +96,8 @@ def RootMeanSquaredErrorSD(n=5):
         return tf.math.reduce_std(multiply(y), axis=1)
     
     def root_mean_squared_error(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.cast(y_pred, tf.float32)
         y_true_std = std(y_true)
         y_pred_std = std(y_pred)
         return tf.sqrt(tf.reduce_mean(tf.square(y_true_std - y_pred_std)))
@@ -100,6 +112,8 @@ def PearsonCorrelationSD(n=5):
         return tf.reshape(tf.math.reduce_std(multiply(y), axis=1), [-1, 1])
     
     def correlation(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.float32)
+        y_pred = tf.cast(y_pred, tf.float32)
         y_true_std = std(y_true)
         y_pred_std = std(y_pred)
         return tfp.stats.correlation(y_true_std, y_pred_std)[0][0]
