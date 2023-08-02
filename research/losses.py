@@ -23,7 +23,7 @@ def MeanAbsoluteError(n=5):
         return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
      
     def mean(y):
-        return tf.math.reduce_mean(multiply(y), axis=0)
+        return tf.math.reduce_mean(multiply(y), axis=1)
 
     def mean_absolute_error(y_true, y_pred):
         y_true_mean = mean(y_true)
@@ -37,7 +37,7 @@ def RootMeanSquaredError(n=5):
         return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
      
     def mean(y):
-        return tf.math.reduce_mean(multiply(y), axis=0)
+        return tf.math.reduce_mean(multiply(y), axis=1)
     
     def root_mean_squared_error(y_true, y_pred):
         y_true_mean = mean(y_true)
@@ -51,7 +51,7 @@ def PearsonCorrelation(n=5):
         return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
      
     def mean(y):
-        return tf.reshape(tf.math.reduce_mean(multiply(y), axis=0), [-1, 1])
+        return tf.reshape(tf.math.reduce_mean(multiply(y), axis=1), [-1, 1])
     
     def correlation(y_true, y_pred):
         y_true_mean = mean(y_true)
@@ -69,7 +69,7 @@ def MeanAbsoluteErrorSD(n=5):
         return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
     
     def std(y):
-        return tf.math.reduce_std(multiply(y), axis=0)
+        return tf.math.reduce_std(multiply(y), axis=1)
     
     def mean_absolute_error(y_true, y_pred):
         y_true_std = std(y_true)
@@ -83,7 +83,7 @@ def RootMeanSquaredErrorSD(n=5):
         return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
     
     def std(y):
-        return tf.math.reduce_std(multiply(y), axis=0)
+        return tf.math.reduce_std(multiply(y), axis=1)
     
     def root_mean_squared_error(y_true, y_pred):
         y_true_std = std(y_true)
@@ -97,7 +97,7 @@ def PearsonCorrelationSD(n=5):
         return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
      
     def std(y):
-        return tf.reshape(tf.math.reduce_std(multiply(y), axis=0), [-1, 1])
+        return tf.reshape(tf.math.reduce_std(multiply(y), axis=1), [-1, 1])
     
     def correlation(y_true, y_pred):
         y_true_std = std(y_true)
