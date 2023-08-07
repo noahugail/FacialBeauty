@@ -15,107 +15,73 @@ def SquaredEarthMoversDistance():
         return K.mean(K.sqrt(K.mean(K.square(cdf_true - cdf_pred), axis=-1)))
     
     return squared_earth_movers_distance
-    
-
-"""
-Mean losses
-"""
-def MeanAbsoluteError(n=5):
-    def multiply(y):
-        return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
-     
-    def mean(y):
-        return tf.math.reduce_mean(multiply(y), axis=1)
-
-    def mean_absolute_error(y_true, y_pred):
-        y_true = tf.cast(y_true, tf.float32)
-        y_pred = tf.cast(y_pred, tf.float32)
-        y_true_mean = mean(y_true)
-        y_pred_mean = mean(y_pred)
-        return tf.reduce_mean(tf.abs(y_true_mean - y_pred_mean))
-
-    return mean_absolute_error
-
-def RootMeanSquaredError(n=5):
-    def multiply(y):
-        return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
-     
-    def mean(y):
-        return tf.math.reduce_mean(multiply(y), axis=1)
-    
-    def root_mean_squared_error(y_true, y_pred):
-        y_true = tf.cast(y_true, tf.float32)
-        y_pred = tf.cast(y_pred, tf.float32)
-        y_true_mean = mean(y_true)
-        y_pred_mean = mean(y_pred)
-        return tf.sqrt(tf.reduce_mean(tf.square(y_true_mean - y_pred_mean)))
-    
-    return root_mean_squared_error
-
-def PearsonCorrelation(n=5):
-    def multiply(y):
-        return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
-     
-    def mean(y):
-        return tf.reshape(tf.math.reduce_mean(multiply(y), axis=1), [-1, 1])
-    
-    def correlation(y_true, y_pred):
-        y_true = tf.cast(y_true, tf.float32)
-        y_pred = tf.cast(y_pred, tf.float32)
-        y_true_mean = mean(y_true)
-        y_pred_mean = mean(y_pred)
-        return tfp.stats.correlation(y_true_mean, y_pred_mean)[0][0]
-    
-    return correlation
 
 
-"""
-Standard deviation losses
-"""
-def MeanAbsoluteErrorSD(n=5):
-    def multiply(y):
-        return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
-    
-    def std(y):
-        return tf.math.reduce_std(multiply(y), axis=1)
-    
-    def mean_absolute_error(y_true, y_pred):
-        y_true = tf.cast(y_true, tf.float32)
-        y_pred = tf.cast(y_pred, tf.float32)
-        y_true_std = std(y_true)
-        y_pred_std = std(y_pred)
-        return tf.reduce_mean(tf.abs(y_true_std - y_pred_std))
+class Statistics():
+    def __init__(self, n):
+        self.scores = tf.constant(np.arange(1,n+1), shape=[n,1], dtype=tf.float32)
 
-    return mean_absolute_error
+    def loss(self, loss, mode, name):
+        stat = getattr(self, mode)
+        name = name + ("" if mode == "mean" else "_" + mode)
 
-def RootMeanSquaredErrorSD(n=5):
-    def multiply(y):
-        return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
-    
-    def std(y):
-        return tf.math.reduce_std(multiply(y), axis=1)
-    
-    def root_mean_squared_error(y_true, y_pred):
-        y_true = tf.cast(y_true, tf.float32)
-        y_pred = tf.cast(y_pred, tf.float32)
-        y_true_std = std(y_true)
-        y_pred_std = std(y_pred)
-        return tf.sqrt(tf.reduce_mean(tf.square(y_true_std - y_pred_std)))
-    
-    return root_mean_squared_error
+        def wrapped_loss(y_true, y_pred):
+            y_true = stat(tf.convert_to_tensor(y_true, tf.float32))
+            y_pred = stat(tf.convert_to_tensor(y_pred, tf.float32))
+            return loss(y_true, y_pred)
 
-def PearsonCorrelationSD(n=5):
-    def multiply(y):
-        return y*(n*tf.constant(np.arange(1,n+1), dtype=tf.float32))
-     
-    def std(y):
-        return tf.reshape(tf.math.reduce_std(multiply(y), axis=1), [-1, 1])
+        exec(f"def {name}(y_true, y_pred): return wrapped_loss(y_true, y_pred)",
+            {"wrapped_loss" : wrapped_loss}, locals()
+        )
+        return locals()[name]
+
+    def moment(self, x, m):
+        return tf.linalg.matmul((x**m), self.scores)
     
-    def correlation(y_true, y_pred):
-        y_true = tf.cast(y_true, tf.float32)
-        y_pred = tf.cast(y_pred, tf.float32)
-        y_true_std = std(y_true)
-        y_pred_std = std(y_pred)
-        return tfp.stats.correlation(y_true_std, y_pred_std)[0][0]
+    def mean(self, x):
+        return self.moment(x, 1)
     
-    return correlation
+    def var(self, x):
+        return tf.abs(self.moment(x, 2)-(self.mean(x)**2))
+    
+    def std(self, x):
+        return tf.sqrt(self.var(x))
+    
+    #Fischer skewness
+    def skew(self, x):
+        return (self.moment(x, 3)-3*self.mean(x)*(self.std(x)**2)-(self.mean(x)**3))/self.std(x)**3
+
+    def kurtosis(self, x):
+        return (self.moment(x, 4)/(self.moment(x, 2)**2))-3
+
+def MeanAbsoluteError(n=5, mode="mean"):
+    s = Statistics(n)
+    return s.loss(
+        lambda y_true, y_pred : tf.reduce_mean(tf.abs(y_true - y_pred)),
+        mode,
+        "mean_absolute_error"
+    )
+
+def RootMeanSquaredError(n=5, mode="mean"):
+    s = Statistics(n)
+    return s.loss(
+        lambda y_true, y_pred : tf.sqrt(tf.reduce_mean(tf.square(y_true - y_pred))),
+        mode,
+        "root_mean_squared_error"
+    )
+
+def MeanSquaredError(n=5, mode="mean"):
+    s = Statistics(n)
+    return s.loss(
+        lambda y_true, y_pred : tf.reduce_mean(tf.square(y_true - y_pred)),
+        mode,
+        "mean_squared_error"
+    )
+
+def PearsonCorrelation(n=5, mode="mean"):
+    s = Statistics(n)
+    return s.loss(
+        tfp.stats.correlation,
+        mode,
+        "correlation"
+    )

@@ -14,7 +14,7 @@ def Stage5Unit1(resnet):
     return tf.keras.models.Model(resnet.layers[-33].input, resnet.layers[-22].output)
 
 def Stage5(resnet):
-    return tf.keras.models.Model(resnet.layers[-33].input, resnet.output)
+    return tf.keras.models.Model(resnet.layers[-33].input, resnet.layers[-1].output)
 
 def AvgPool7x7(input, output):
     return tf.keras.models.Model(input, layers.AveragePooling2D((7, 7))(output))
@@ -44,7 +44,7 @@ def ResNeXtRB3(input_shape=(224, 224, 3)):
     layer2 = resnext.get_layer("stage4_unit1_conv1")
 
     base = tf.keras.models.Model(resnext.input, layer1.output)
-    trainable = tf.keras.models.Model(layer2.input, resnext.output)
+    trainable = AvgPool7x7(layer2.input, resnext.output)
 
     return base, trainable, preprocess_input
 
@@ -109,7 +109,22 @@ def ResNet44(input_shape=(224, 224, 3)):
     x = Stage5Unit1(resnet)(input)
     trainable = AvgPool7x7(input, x)
 
-    return base, trainable, tf.keras.applications.resnet.preprocess_input
+    return base, trainable, tf.keras.applications.resnet50.preprocess_input
+
+def ResNet44_IN(input_shape=(224, 224, 3)):
+    resnet = tf.keras.applications.ResNet50(
+        include_top=False, 
+        input_shape=input_shape,
+        weights="imagenet",
+        pooling="None"
+    )
+    base = Stage1_4(resnet)
+
+    input = layers.Input(base.output_shape[1:])
+    x = Stage5Unit1(resnet)(input)
+    trainable = AvgPool7x7(input, x)
+
+    return base, trainable, tf.keras.applications.resnet50.preprocess_input
 
 #ResNet50 minus last 9 convolutional layers
 def ResNet41(input_shape=(224, 224, 3)):
@@ -120,6 +135,9 @@ def ResNet41(input_shape=(224, 224, 3)):
         weights="vggface"
     )
     base = Stage1_4(resnet)
+
+    #input = layers.Input(base.output_shape[1:])
+    #trainable = AvgPool7x7(input, input)
     
     return base, None, tf.keras.applications.resnet.preprocess_input
 
@@ -133,7 +151,9 @@ def ResNetRB3_IN(input_shape=(224, 224, 3)):
     )
     base = Stage1_4(resnet)
 
-    trainable = Stage5(resnet)
+    input = layers.Input(base.output_shape[1:])
+    x = Stage5(resnet)(input)
+    trainable = AvgPool7x7(input, x)
 
     return base, trainable, tf.keras.applications.resnet50.preprocess_input
 
@@ -267,4 +287,28 @@ def DenseNet201(input_shape=(224, 224, 3)):
             weights="imagenet",
             pooling="None"
     )
-    return base, None, tf.keras.applications.resnet.preprocess_input
+    return base, None, tf.keras.applications.densenet.preprocess_input
+
+def DenseNet169(input_shape=(224, 224, 3)):
+    base = tf.keras.applications.DenseNet169(include_top=False,
+            input_shape=input_shape,
+            weights="imagenet",
+            pooling=None
+    )
+
+    """
+    base = tf.keras.models.Model(
+        densenet.input,
+        densenet.get_layer("conv5_block1_0_relu").output
+    )
+   
+    input = layers.Input(base.output_shape[1:])
+    print(input)
+    x = tf.keras.models.Model(
+        densenet.get_layer("conv5_block1_1_conv").input,
+        densenet.get_layer("relu").output
+    )(input)
+    trainable = AvgPool7x7(input, x)
+    """
+
+    return base, None, tf.keras.applications.densenet.preprocess_input

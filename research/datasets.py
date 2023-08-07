@@ -2,7 +2,6 @@ import numpy as np
 import os
 import pandas as pd
 import tensorflow as tf
-from tensorflow.keras import layers
 from tensorflow.keras.utils import Sequence
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import train_test_split
@@ -19,58 +18,100 @@ class DataGenerator(Sequence):
     def __getitem__(self, idx):
         batch_x = self.x[idx * self.batch_size:(idx + 1) * self.batch_size]
         batch_y = self.y[idx * self.batch_size:(idx + 1) * self.batch_size]
-        return batch_x, batch_y
+        
+        p = np.random.permutation(len(batch_x))
+        return batch_x[p], batch_y[p]
     
 class Dataset():
-    def __init__(self, 
-                images,
-                train_files,
-                test_files,
-                ratings,  
-                input_shape, 
-                batch_size):
-        
+    def __init__(
+            self, 
+            images,
+            train_files,
+            test_files,
+            ratings,  
+            input_shape, 
+            batch_size,
+            val_files=0
+        ):
+
         self.images = images
         self.ratings = pd.read_csv(ratings)
         self.input_shape = input_shape
+
         self.train_files = train_files
         self.test_files = test_files
+        self.val_files = val_files
+
         self.batch_size = batch_size
+        self.augmentation = tf.keras.Sequential([
+            tf.keras.layers.RandomRotation(5/360),
+            tf.keras.layers.RandomFlip("vertical")
+        ])
+    
+    def shuffle(self, test_size=0.2, val_size=0.1):
+        X_train, self.test.x, \
+        y_train, self.test.y = train_test_split(
+            np.concatenate((
+                self.train.x[:len(self.train_files)],
+                self.val.x,
+                self.test.x
+            )),
+            np.concatenate((
+                self.train.y[:len(self.train_files)],
+                self.val.y,
+                self.test.y
+            )),
+            shuffle=True,
+            test_size=test_size
+        )
+
+        if not isinstance(self.val_files, int):
+            X_train, self.val.x, \
+            y_train, self.val.y = train_test_split(
+                X_train,
+                y_train,
+                test_size=val_size
+            )
+
+        self.train.x, self.train.y = self.augment(X_train, y_train)
+
+    def augment(self, X_train, y_train):
+        if self.copies:
+            X_train_copy = X_train.copy()
+            y_train_copy = y_train.copy()
+            for _ in range(self.copies):
+                X_train = np.concatenate((X_train, self.augmentation(X_train_copy)))
+                y_train = np.concatenate((y_train, y_train_copy))
+
+        return X_train, y_train
+    
+    def preprocess(self, X, model, preprocess_input):
+        if preprocess_input: X = preprocess_input(X)
+        if model: X = model.predict(X)
+        return X
 
     def generate(self, model=None, preprocess_input=None, augment=0):
+        self.copies = augment
+
         X_train, y_train = self.load(self.train_files)
         X_test, y_test = self.load(self.test_files)
 
-        self.X_train = X_train
+        X_train = self.preprocess(X_train, model, preprocess_input)
+        X_test = self.preprocess(X_test, model, preprocess_input)
 
-        if preprocess_input:
-            X_train = preprocess_input(X_train)
-            X_test = preprocess_input(X_test)
-
-        if model:
-            X_train = model.predict(X_train)
-            X_test = model.predict(X_test)
-
-        augmentation = tf.keras.Sequential([
-            layers.RandomRotation(5/360),
-            layers.RandomFlip("vertical")
-        ])
-
-        X_train_copy = X_train.copy()
-        y_train_copy = y_train.copy()
-        for _ in range(augment):
-            X_train = np.concatenate((X_train, augmentation(X_train_copy)))
-            y_train = np.concatenate((y_train, y_train_copy))
-
-        del X_train_copy, y_train_copy
+        X_train, y_train = self.augment(X_train, y_train)
 
         print(X_train.shape, X_test.shape)
         print(y_train.shape, y_test.shape)
 
+        if not isinstance(self.val_files, int):
+            X_val, y_val = self.load(self.val_files)
+            X_val = self.preprocess(X_val, model, preprocess_input)
+            print(X_val.shape, y_val.shape)
+            self.val = DataGenerator(X_val, y_val, self.batch_size)
+
         self.train = DataGenerator(X_train, y_train, self.batch_size)
         self.test = DataGenerator(X_test, y_test, self.batch_size)
-
-        del X_train, X_test, y_train, y_test
 
     def load(self, files):
         X = []
@@ -91,6 +132,12 @@ class Dataset():
                 )))
 
         X = np.asarray(X, np.float32)
+
+        #X = layers.Normalization(
+            #mean=[0.5, 0.5, 0.5],
+            #variance=np.sqrt(np.array([0.5, 0.5, 0.5]))
+        #)(X)
+        
         y = np.asarray(y, np.float32)
 
         return X, y
@@ -99,11 +146,13 @@ def path_to_filenames(path):
         with open(path, "r") as f:
             return [l.split(".jpg")[0]+".jpg" for l in f.readlines()]
     
-def SCUTFBP5500(images="mediapipe/",
-                directory="C:/Users/ugail/Downloads/SCUT-FBP5500_v2.1/SCUT-FBP5500_v2/",
-                ratings="./SCUTFBP5500_Distribution.csv",
-                input_shape=(224,224,3), 
-                batch_size=32):
+def SCUTFBP5500(
+        images="mediapipe/",
+        directory="C:/Users/ugail/Downloads/SCUT-FBP5500_v2.1/SCUT-FBP5500_v2/",
+        ratings="./SCUTFBP5500_Distribution.csv",
+        input_shape=(224,224,3), 
+        batch_size=32
+    ):
 
         train_filenames = path_to_filenames(
             directory+"train_test_files/split_of_60%training and 40%testing/train.txt"
@@ -112,43 +161,42 @@ def SCUTFBP5500(images="mediapipe/",
             directory+"train_test_files/split_of_60%training and 40%testing/test.txt"
         )
 
-        return Dataset(directory+images,
-                       train_filenames,
-                       test_filenames,
-                       ratings,
-                       input_shape,
-                       batch_size), 5
+        return Dataset(
+            directory+images,
+            train_filenames,
+            test_filenames,
+            ratings,
+            input_shape,
+            batch_size
+        ), 5
 
-def MEBeauty(images="cropped_images/images_crop_align_mtcnn2/",
-            directory="C:/Users/ugail/Downloads/MEBeauty-database-main/MEBeauty-database-main/",
-            ratings="./MEBeauty_Distribution.csv",
-            input_shape=(224,224,3), 
-            batch_size=32):
+def MEBeauty(
+        images="cropped_images/images_crop_align_mtcnn3/",
+        directory="C:/Users/ugail/Downloads/MEBeauty-database-main/MEBeauty-database-main/",
+        ratings="./MEBeauty_Distribution.csv",
+        input_shape=(224,224,3), 
+        batch_size=32
+    ):
 
-        
-        filenames = pd.read_csv(ratings)["filename"].to_numpy()
+        #filenames = pd.read_csv(ratings)["filename"].to_numpy()
+        #train_files, test_files = split(filenames, 0.8)
+        #train_files, val_files = split(train_files, 0.9)
+        #print(len(train_files), len(test_files), len(val_files))
 
-        train_filenames, test_filenames = train_test_split(filenames,
-                                                           shuffle=True,
-                                                           test_size=0.2
-                                        )
-        
-        train_filenames, _, = train_test_split(train_filenames, 
-                                               test_size=0.1
-                            )
-        
-        """
-        train_filenames = path_to_filenames(
-            directory+"scores/train_2023.txt"
-        )
-        test_filenames = path_to_filenames(
-            directory+"scores/test_2023.txt"
-        )
-        """
+        train_files = path_to_filenames(directory+"/scores/train_2023.txt")
+        test_files = path_to_filenames(directory+"/scores/test_2023.txt")
+        val_files = path_to_filenames(directory+"/scores/val_2023.txt")
 
-        return Dataset(directory+images,
-                       train_filenames,
-                       test_filenames,
-                       ratings,
-                       input_shape,
-                       batch_size), 10
+        return Dataset(
+            directory+images,
+            train_files,
+            test_files,
+            ratings,
+            input_shape,
+            batch_size,
+            val_files=val_files
+        ), 10
+
+def split(arr, percentage):
+    idx = int(len(arr)*percentage)
+    return arr[:idx], arr[idx:]
