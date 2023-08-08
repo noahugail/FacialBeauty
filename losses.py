@@ -49,10 +49,7 @@ class Statistics():
     
     #Fischer skewness
     def skew(self, x):
-        return (self.moment(x, 3)-3*self.mean(x)*(self.std(x)**2)-(self.mean(x)**3))/self.std(x)**3
-
-    def kurtosis(self, x):
-        return (self.moment(x, 4)/(self.moment(x, 2)**2))-3
+        return (self.moment(x, 3)-3*self.mean(x)*(self.std(x)**2)-(self.mean(x)**3))/(self.std(x)**3)
 
 def MeanAbsoluteError(n=5, mode="mean"):
     s = Statistics(n)
