@@ -225,16 +225,15 @@ def VGG16(input_shape=(224, 224, 3)):
     return base, trainable
 
 def VGG16_IN(input_shape=(224, 224, 3)):
-    vgg = VGGFace(
-        model="vgg16",
+    vgg = tf.keras.applications.VGG16(
         include_top=False,
         input_shape=input_shape,
-        weights="vggface"
+        weights="imagenet"
     )
-    base = tf.keras.models.Model(vgg.input, vgg.get_layer("pool4").output)
+    base = tf.keras.models.Model(vgg.input, vgg.get_layer("block4_pool").output)
    
     input = layers.Input(base.output_shape[1:])
-    x = tf.keras.models.Model(vgg.get_layer("conv5_1").input, vgg.output)(input)
+    x = tf.keras.models.Model(vgg.get_layer("block5_conv1").input, vgg.output)(input)
     trainable = AvgPool7x7(input, x)
 
     return base, trainable
