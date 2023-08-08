@@ -4,14 +4,6 @@ from livelossplot import PlotLossesKerasTF
 import timeit
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-tf.keras.activations.softmax
-
-taylor = lambda x : 1+x+(0.5)*(x**2)#+(1/6)*(x**3)+(1/24)*(x**3)
-def softmax_taylor(x):
-    e = taylor(x - tf.reduce_max(x, keepdims=True))
-    s = tf.reduce_sum(e, keepdims=True)
-    return e / s
-
 def build(
         input_shape,
         train=0,
