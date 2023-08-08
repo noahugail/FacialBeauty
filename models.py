@@ -19,83 +19,11 @@ def Stage5(resnet):
 def AvgPool7x7(input, output):
     return tf.keras.models.Model(input, layers.AveragePooling2D((7, 7))(output))
 
-"""
-Inception models
-"""
-def InceptionResNetV2(input_shape=(299, 299, 3)):
-    base = tf.keras.applications.InceptionResNetV2(
-        include_top=False,
-        input_shape=input_shape,
-        pooling="None",
-        weights="imagenet"
-    )
-
-    return base, None
-
-
-"""
-ResNeXt models
-"""
-def ResNeXtRB3(input_shape=(224, 224, 3)):
-    ResNeXt50, preprocess_input = Classifiers.get("resnext50")
-    resnext = ResNeXt50(include_top=False, input_shape=input_shape, weights="imagenet")
-
-    layer1 = resnext.get_layer("stage3_unit6_relu")
-    layer2 = resnext.get_layer("stage4_unit1_conv1")
-
-    base = tf.keras.models.Model(resnext.input, layer1.output)
-    trainable = AvgPool7x7(layer2.input, resnext.output)
-
-    return base, trainable
-
-def ResNet41NeXt(input_shape=(224, 224, 3)):
-    resnet = VGGFace(
-        model="resnet50",
-        include_top=False,
-        input_shape=input_shape,
-        weights="vggface"
-    )
-    base = Stage1_4(resnet)
-
-    ResNeXt50, preprocess_input = Classifiers.get("resnext50")
-    resnext = ResNeXt50(include_top=False, 
-                        input_shape=input_shape, 
-                        weights="imagenet")
-
-    input = layers.Input(base.output_shape[1:])
-    x = tf.keras.models.Model(resnext.get_layer("stage4_unit1_conv1").input,
-                    resnext.output)(input)
-    trainable = AvgPool7x7(input, x)
-
-    return base, trainable
-
-def ResNet44NeXt(input_shape=(224, 224, 3)):
-    resnet = VGGFace(
-        model="resnet50",
-        include_top=False,
-        input_shape=input_shape,
-        weights="vggface"
-    )
-    base = Stage1_4(resnet)
-
-    ResNeXt50, preprocess_input = Classifiers.get("resnext50")
-    resnext = ResNeXt50(include_top=False, 
-                        input_shape=input_shape, 
-                        weights="imagenet")
-
-    input = layers.Input(base.output_shape[1:])
-    x = Stage5Unit1(resnet)(input)
-    x = tf.keras.models.Model(resnext.get_layer("stage4_unit2_conv1").input,
-                    resnext.output)(x)
-    trainable = AvgPool7x7(input, x)
-
-    return base, trainable
-
 
 """
 ResNet models
 """
-#ResNet50 minus last 6 convolutional layers with trainable Stage 5 Unit 1
+#ResNet50 VGGFace2 weights minus last 6 convolutional layers with trainable Stage 5 Unit 1
 def ResNet44(input_shape=(224, 224, 3)):
     resnet = VGGFace(
         model="resnet50",
@@ -111,6 +39,7 @@ def ResNet44(input_shape=(224, 224, 3)):
 
     return base, trainable
 
+#ResNet50 ImageNet weights minus last 6 convolutional layers with trainable Stage 5 Unit 1
 def ResNet44_IN(input_shape=(224, 224, 3)):
     resnet = tf.keras.applications.ResNet50(
         include_top=False, 
@@ -126,23 +55,8 @@ def ResNet44_IN(input_shape=(224, 224, 3)):
 
     return base, trainable
 
-#ResNet50 minus last 9 convolutional layers
-def ResNet41(input_shape=(224, 224, 3)):
-    resnet = VGGFace(
-        model="resnet50",
-        include_top=False,
-        input_shape=input_shape,
-        weights="vggface"
-    )
-    base = Stage1_4(resnet)
-
-    #input = layers.Input(base.output_shape[1:])
-    #trainable = AvgPool7x7(input, input)
-    
-    return base, None
-
 #ResNet50 with trainable Stage 5 with imagenet weights
-def ResNetRB3_IN(input_shape=(224, 224, 3)):
+def ResNet50_IN(input_shape=(224, 224, 3)):
     resnet = tf.keras.applications.ResNet50(
         include_top=False, 
         input_shape=input_shape,
@@ -157,8 +71,8 @@ def ResNetRB3_IN(input_shape=(224, 224, 3)):
 
     return base, trainable
 
-#ResNet50 Stage 5 unfrozen
-def ResNetRB3(input_shape=(224, 224, 3)):
+#ResNet50 VGGFace2 weights trainable Stage 5
+def ResNet50(input_shape=(224, 224, 3)):
     resnet = VGGFace(
         model="resnet50",
         include_top=False,
@@ -170,45 +84,12 @@ def ResNetRB3(input_shape=(224, 224, 3)):
     trainable = Stage5(resnet)
 
     return base, trainable
-
-#ResNet50 Stage 5 unfrozen + Stage 4 Block 6 
-def ResNetRB4(input_shape=(224, 224, 3)):
-    resnet = VGGFace(
-        model="resnet50",
-        include_top=False,
-        input_shape=input_shape,
-        weights="vggface"
-    )
-    base = tf.keras.models.Model(resnet.input, outputs=resnet.layers[-44].output)
-
-    trainable = tf.keras.models.Model(inputs=resnet.layers[-43].input, outputs=resnet.output)
-
-    return base, trainable
+    
 
 """
 VGG16 models
 """
-#ResNet Stage 1-4 + VGG trainable layers
-def ResNet44VGG(input_shape=(224, 224, 3)):
-    resnet = VGGFace(
-        model="resnet50",
-        include_top=False,
-        input_shape=input_shape,
-        weights="vggface"
-    )
-    base = Stage1_4(resnet)
-
-    input = layers.Input(base.output_shape[1:])
-    x = Stage5Unit1(resnet)(input)
-    #x = tf.keras.layers.Conv2D(512, 3, strides=1, padding="same")(x)
-    x = tf.keras.layers.Conv2D(512, 3, strides=1, padding="same")(x)
-    x = tf.keras.layers.Conv2D(512, 3, strides=1, padding="same")(x)
-    #x = tf.keras.layers.MaxPooling2D(2, strides=2)(x)
-    trainable = AvgPool7x7(input, x)
-
-    return base, trainable
-
-
+#VGG16 with trainable Stage 5 with vggface weights
 def VGG16(input_shape=(224, 224, 3)):
     vgg = VGGFace(
         model="vgg16",
@@ -224,6 +105,7 @@ def VGG16(input_shape=(224, 224, 3)):
 
     return base, trainable
 
+#VGG16 with trainable Stage 5 with imagenet weights
 def VGG16_IN(input_shape=(224, 224, 3)):
     vgg = tf.keras.applications.VGG16(
         include_top=False,
@@ -237,91 +119,3 @@ def VGG16_IN(input_shape=(224, 224, 3)):
     trainable = AvgPool7x7(input, x)
 
     return base, trainable
-
-
-"""
-SqueezeNet models
-"""
-#Senet + ResNet Stage 5
-def SEResNet(input_shape=(224, 224, 3)):
-    resnet = VGGFace(
-        model="resnet50",
-        include_top=False,
-        input_shape=input_shape,
-        pooling="None",
-        weights="vggface"
-    )
-
-    senet = VGGFace(
-        model="senet50",
-        include_top=False,
-        input_shape=input_shape,
-        pooling="None",
-        weights="vggface"
-    )
-
-    base = tf.keras.models.Model(inputs=senet.input, outputs=senet.layers[-55].output)
-    trainable = Stage5(resnet)
-
-    return base, trainable
-
-
-"""
-DenseNet models
-"""
-#ResNet Stage 1-4 + densenet Conv layers
-def ResNet41Dense(input_shape=(224, 224, 3)):
-    resnet = VGGFace(
-        model="resnet50",
-        include_top=False,
-        input_shape=input_shape,
-        pooling="None",
-        weights="vggface"
-    )
-    base = Stage1_4(resnet)
-
-    densenet = tf.keras.applications.DenseNet201(include_top=False,
-            input_shape=input_shape,
-            weights="imagenet"
-    )
-    densenet = tf.keras.models.Model(densenet.get_layer("pool4_pool").input,
-                densenet.output)
-
-    inputs = layers.Input(base.output_shape[1:])
-    x = tf.keras.layers.Conv2D(896, 1, strides=1)(inputs)
-    x = densenet(x)
-    trainable = tf.keras.models.Model(inputs, x)
-
-    return base, trainable
-
-def DenseNet201(input_shape=(224, 224, 3)):
-    base = tf.keras.applications.DenseNet201(include_top=False,
-            input_shape=input_shape,
-            weights="imagenet",
-            pooling="None"
-    )
-    return base, None, tf.keras.applications.densenet.preprocess_input
-
-def DenseNet169(input_shape=(224, 224, 3)):
-    base = tf.keras.applications.DenseNet169(include_top=False,
-            input_shape=input_shape,
-            weights="imagenet",
-            pooling=None
-    )
-
-    """
-    base = tf.keras.models.Model(
-        densenet.input,
-        densenet.get_layer("conv5_block1_0_relu").output
-    )
-   
-    input = layers.Input(base.output_shape[1:])
-    print(input)
-    x = tf.keras.models.Model(
-        densenet.get_layer("conv5_block1_1_conv").input,
-        densenet.get_layer("relu").output
-    )(input)
-    trainable = AvgPool7x7(input, x)
-    """
-
-    return base, None
