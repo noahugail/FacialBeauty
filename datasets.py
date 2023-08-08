@@ -190,9 +190,9 @@ def MEBeauty(
         #train_files, val_files = split(train_files, 0.9)
         #print(len(train_files), len(test_files), len(val_files))
 
-        train_files = path_to_filenames(directory+"/train_2023.txt")
-        test_files = path_to_filenames(directory+"/test_2023.txt")
-        val_files = path_to_filenames(directory+"/val_2023.txt")
+        train_files = path_to_filenames("./train_2023.txt")
+        test_files = path_to_filenames("./test_2023.txt")
+        val_files = path_to_filenames("./val_2023.txt")
 
         return Dataset(
             directory+images,
