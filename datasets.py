@@ -87,6 +87,17 @@ class Dataset():
         return X_train, y_train
     
     def preprocess(self, X, model):
+        """
+        Require: Dataset, Backbone model
+        Return: Zero-centred feature maps
+
+        Converts each image from RGB to BGR
+        and zero-centres w.r.t to the training
+        dataset.
+        Then if a backbone is being used
+        extract the features from each image.
+        """
+        
         X = X[..., ::-1] #Convert from RGB to BGR
 
         #Zero center each channel w.r.t training dataset
