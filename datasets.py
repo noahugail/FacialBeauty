@@ -35,7 +35,6 @@ class Dataset():
             val_files=0
         ):
 
-        self.mean = 0
         self.images = images
         self.ratings = pd.read_csv(ratings)
         self.input_shape = input_shape
@@ -98,13 +97,23 @@ class Dataset():
                 np.mean(X[..., 2])],
                 np.float32
             )
-        X -= self.mean
+
+            self.std = np.array([
+                np.std(X[..., 0]),
+                np.std(X[..., 1]),
+                np.std(X[..., 2])],
+                np.float32
+            )
+            
+        X = (X - self.mean) / self.std
         
         if model: X = model.predict(X)
         return X
 
     def generate(self, model=None, augment=0):
         self.copies = augment
+        self.mean = 0
+        self.std = 0
 
         X_train, y_train = self.load(self.train_files)
         X_test, y_test = self.load(self.test_files)
