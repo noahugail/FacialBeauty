@@ -1,13 +1,13 @@
 import numpy as np
 import os
+import pickle
 import pandas as pd
 import tensorflow as tf
-from tensorflow.keras.utils import Sequence
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import train_test_split
 from keras_vggface.utils import preprocess_input
 
-class DataGenerator(Sequence):
+class DataGenerator(tf.keras.utils.Sequence):
     def __init__(self, x_set, y_set, batch_size):
         self.x = x_set
         self.y = y_set
@@ -16,12 +16,22 @@ class DataGenerator(Sequence):
     def __len__(self):
         return int(np.ceil(len(self.x) / float(self.batch_size)))
 
-    def __getitem__(self, idx):
-        batch_x = self.x[idx * self.batch_size:(idx + 1) * self.batch_size]
-        batch_y = self.y[idx * self.batch_size:(idx + 1) * self.batch_size]
+    def __getitem__(self, iter):
+        batch_x = self.x[iter * self.batch_size:(iter + 1) * self.batch_size]
+        batch_y = self.y[iter * self.batch_size:(iter + 1) * self.batch_size]
         
-        p = np.random.permutation(len(batch_x))
-        return batch_x[p], batch_y[p]
+        #p = np.random.permutation(len(batch_x))
+        #np.take(batch_x, p, axis=0, out=batch_x)
+        #np.take(batch_y, p, axis=0,out=batch_y)
+
+        #return batch_x[p], batch_y[p]
+
+        return batch_x, batch_y
+    
+    #def on_epoch_end(self):
+        #p = np.random.permutation(len(self.x))
+        #np.take(self.x, p, axis=0, out=self.x)
+        #np.take(self.y, p, axis=0,out=self.y)
     
 class Dataset():
     def __init__(
@@ -87,17 +97,6 @@ class Dataset():
         return X_train, y_train
     
     def preprocess(self, X, model):
-        """
-        Require: Dataset, Backbone model
-        Return: Normalised feature maps
-
-        Converts each image from RGB to BGR
-        and normalises w.r.t to the training
-        dataset.
-        Then if a backbone is being used
-        extract the features from each image.
-        """
-        
         X = X[..., ::-1] #Convert from RGB to BGR
 
         #Zero center each channel w.r.t training dataset
@@ -108,17 +107,17 @@ class Dataset():
                 np.mean(X[..., 2])],
                 np.float32
             )
-
             self.std = np.array([
                 np.std(X[..., 0]),
                 np.std(X[..., 1]),
                 np.std(X[..., 2])],
                 np.float32
-            )
-            
-        X = (X - self.mean) / self.std
-        
+            ) 
+
+        #X = (X - self.mean) / self.std
+        X -= self.mean
         if model: X = model.predict(X)
+
         return X
 
     def generate(self, model=None, augment=0):
@@ -177,10 +176,10 @@ def SCUTFBP5500(
         images="mediapipe/",
         directory="C:/Users/ugail/Downloads/SCUT-FBP5500_v2.1/SCUT-FBP5500_v2/",
         ratings="./SCUTFBP5500_Distribution.csv",
+        features="14x14",
         input_shape=(224,224,3), 
         batch_size=32
     ):
-
         train_filenames = path_to_filenames(
             directory+"train_test_files/split_of_60%training and 40%testing/train.txt"
         )
@@ -188,14 +187,20 @@ def SCUTFBP5500(
             directory+"train_test_files/split_of_60%training and 40%testing/test.txt"
         )
 
-        return Dataset(
+        d = Dataset(
             directory+images,
             train_filenames,
             test_filenames,
             ratings,
             input_shape,
             batch_size
-        ), 5
+        )
+
+        if features:
+            with open(features+"train.pkl","rb") as f: d.train = pickle.load(f)
+            with open(features+"test.pkl","rb") as f: d.test = pickle.load(f)
+
+        return d, 5
 
 def MEBeauty(
         images="cropped_images/images_crop_align_mtcnn3/",
@@ -210,9 +215,9 @@ def MEBeauty(
         #train_files, val_files = split(train_files, 0.9)
         #print(len(train_files), len(test_files), len(val_files))
 
-        train_files = path_to_filenames("./train_2023.txt")
-        test_files = path_to_filenames("./test_2023.txt")
-        val_files = path_to_filenames("./val_2023.txt")
+        train_files = path_to_filenames("./train_2024.txt")
+        test_files = path_to_filenames("./test_2024.txt")
+        val_files = path_to_filenames("./val_2024.txt")
 
         return Dataset(
             directory+images,

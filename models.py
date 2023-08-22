@@ -142,7 +142,7 @@ def ResNet41(input_shape=(224, 224, 3)):
     return base, None
 
 #ResNet50 with trainable Stage 5 with imagenet weights
-def ResNetRB3_IN(input_shape=(224, 224, 3)):
+def ResNet50_IN(input_shape=(224, 224, 3)):
     resnet = tf.keras.applications.ResNet50(
         include_top=False, 
         input_shape=input_shape,
@@ -158,7 +158,7 @@ def ResNetRB3_IN(input_shape=(224, 224, 3)):
     return base, trainable
 
 #ResNet50 Stage 5 unfrozen
-def ResNetRB3(input_shape=(224, 224, 3)):
+def ResNet50(input_shape=(224, 224, 3)):
     resnet = VGGFace(
         model="resnet50",
         include_top=False,
@@ -170,6 +170,17 @@ def ResNetRB3(input_shape=(224, 224, 3)):
     trainable = Stage5(resnet)
 
     return base, trainable
+
+#ResNet50
+def ResNet50_FULL(input_shape=(224, 224, 3)):
+    base = VGGFace(
+        model="resnet50",
+        include_top=False,
+        input_shape=input_shape,
+        weights="vggface"
+    )
+
+    return base, None
 
 #ResNet50 Stage 5 unfrozen + Stage 4 Block 6 
 def ResNetRB4(input_shape=(224, 224, 3)):
@@ -260,11 +271,24 @@ def SEResNet(input_shape=(224, 224, 3)):
         weights="vggface"
     )
 
-    base = tf.keras.models.Model(inputs=senet.input, outputs=senet.layers[-55].output)
+    base = tf.keras.models.Model(senet.input, senet.layers[-55].output)
     trainable = Stage5(resnet)
 
     return base, trainable
 
+def SENet50(input_shape=(224, 224, 3)):
+    senet = VGGFace(
+        model="senet50",
+        include_top=False,
+        input_shape=input_shape,
+        pooling="None",
+        weights="vggface"
+    )
+
+    base = tf.keras.models.Model(senet.input, senet.layers[-55].output)
+    trainable = tf.keras.models.Model(senet.layers[-54].input, senet.output)
+
+    return base, trainable
 
 """
 DenseNet models
@@ -323,5 +347,33 @@ def DenseNet169(input_shape=(224, 224, 3)):
     )(input)
     trainable = AvgPool7x7(input, x)
     """
+
+    return base, None
+
+def conv1(resnet, base):
+    inputs = tf.keras.layers.Input(resnet.input_shape[1:])
+    x = tf.keras.models.Model(resnet.input, resnet.layers[1].output)(inputs)
+    x = base(x)
+    base = tf.keras.models.Model(inputs, x)
+
+    return base
+
+def test():
+    base = tf.keras.models.load_model("./GN_W0.5_S2_ArcFace_epoch16.h5", compile=False)
+    base = tf.keras.models.Model(base.input, base.layers[-4].output)
+    return base, None
+
+def test2(input_shape = (224,224,3)):
+    resnet = VGGFace(
+        model="resnet50",
+        include_top=False,
+        input_shape=input_shape,
+        pooling="None",
+        weights="vggface"
+    )
+    
+    base = tf.keras.models.load_model("./TT_resnet101v2_swish_pad_same_first_conv_k3_stride_1_conv_no_bias_E_arc_emb512_dr04_sgd_l2_5e4_bs384_ms1m_bnm09_bne1e4_cos16_basic_agedb_30_epoch_44_batch_2000_0.985000.h5")
+    base = AvgPool7x7(base.layers[2].input, base.layers[-5].output)
+    base = conv1(resnet, base)
 
     return base, None
