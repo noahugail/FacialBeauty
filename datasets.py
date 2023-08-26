@@ -120,7 +120,7 @@ class Dataset():
 
         return X
 
-    def generate(self, model=None, augment=0):
+    def generate(self, model=None, out_path=None, augment=0):
         self.copies = augment
         self.mean = 0
         self.std = 0
@@ -136,14 +136,25 @@ class Dataset():
         print(X_train.shape, X_test.shape)
         print(y_train.shape, y_test.shape)
 
+        path = os.getcwd() + out_path
+        if not os.path.exists(path): os.mkdir(path)
+
         if not isinstance(self.val_files, int):
             X_val, y_val = self.load(self.val_files)
             X_val = self.preprocess(X_val, model)
             print(X_val.shape, y_val.shape)
+
             self.val = DataGenerator(X_val, y_val, self.batch_size)
+            with open(path + "val.pkl", "wb") as f: pickle.dump(self.val, f)
+            print(f"Val generator saved to {path+'val.pkl'}")
 
         self.train = DataGenerator(X_train, y_train, self.batch_size)
+        with open(path + "train.pkl", "wb") as f: pickle.dump(self.train, f)
+        print(f"Train generator saved to {path+'train.pkl'}")
+
         self.test = DataGenerator(X_test, y_test, self.batch_size)
+        with open(path + "test.pkl", "wb") as f: pickle.dump(self.test, f)
+        print(f"Test generator saved to {path+'test.pkl'}")
 
     def load(self, files):
         X = []
@@ -176,7 +187,7 @@ def SCUTFBP5500(
         images="mediapipe/",
         directory="C:/Users/ugail/Downloads/SCUT-FBP5500_v2.1/SCUT-FBP5500_v2/",
         ratings="./SCUTFBP5500_Distribution.csv",
-        features="14x14",
+        features=None,
         input_shape=(224,224,3), 
         batch_size=32
     ):

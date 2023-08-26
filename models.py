@@ -168,6 +168,7 @@ def ResNet50(input_shape=(224, 224, 3)):
     base = Stage1_4(resnet)
 
     trainable = Stage5(resnet)
+    trainable._name = "ResNet50_Stage5"
 
     return base, trainable
 
